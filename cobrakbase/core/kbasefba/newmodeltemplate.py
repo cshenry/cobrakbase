@@ -14,7 +14,7 @@ class TemplateRole(KBaseObjectBase):
 class NewModelTemplate(KBaseObject):
     
     def __init__(self, data=None, info=None, args=None, role_suf='ftr', complex_suf='cpx'):
-        super().__init__(data, info, args)
+        super().__init__(data, info, args,"KBaseFBA.NewModelTemplate")
         self.role_suf = role_suf
         self.complex_suf = complex_suf
         self.role_last_id = self.get_last_id_value(self.data['roles'], role_suf)
