@@ -517,7 +517,7 @@ class KBaseFBAUtilities():
         new_exchange = []
         new_demand = []
         new_penalties = dict()
-        print("INDEX:"+str(index)+" LENGTH:"+len(input_templates))
+        print("INDEX:"+str(index)+" LENGTH:"+str(len(input_templates)))
         template = None
         if index < len(input_templates):
             template = input_templates[index]
