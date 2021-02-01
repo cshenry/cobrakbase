@@ -265,7 +265,7 @@ class KBaseFBAUtilities():
         #Updating solver one final time
         self.cobramodel.solver.update()
         
-    def add_intracellular_metabolomics_constraints(self,peakstring,builder,relevant_peaks = None):
+    def add_intracellular_metabolomics_constraints(self,peakstring,relevant_peaks = None):
         drain_fluxes = list()
         peak_array = peakstring.split(";")
         compound_reactions = dict()
