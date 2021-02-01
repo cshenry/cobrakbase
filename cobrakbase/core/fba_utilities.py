@@ -466,7 +466,8 @@ class KBaseFBAUtilities():
         for modelreaction in source_model.reactions:
             if modelreaction.id.split("_")[0] in self.blacklist:
                 next
-            cobra_reaction = self.convert_modelreaction(modelreaction)
+            #cobra_reaction = self.convert_modelreaction(modelreaction)
+            cobra_reaction = modelreaction
             groups = comp.match(cobra_reaction.id)
             cobra_reaction.id = groups[1]+groups[2]+str(index)
             new_penalties[cobra_reaction.id] = dict();
@@ -517,7 +518,6 @@ class KBaseFBAUtilities():
         new_exchange = []
         new_demand = []
         new_penalties = dict()
-        print("INDEX:"+str(index)+" LENGTH:"+str(len(input_templates)))
         template = None
         if index < len(input_templates):
             template = input_templates[index]
