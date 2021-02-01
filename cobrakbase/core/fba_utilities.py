@@ -5,6 +5,7 @@ import copy
 from optlang.symbolics import Zero, add
 from cobra.core import Gene, Metabolite, Model, Reaction
 from cobrakbase.core.kbaseobject import AttrDict
+from annotation_ontology_api.annotation_ontology_apiServiceClient import annotation_ontology_api
 
 logger = logging.getLogger(__name__)
 
@@ -221,10 +222,7 @@ class KBaseFBAUtilities():
                 self.cobramodel.add_cons_vars(self.reversibility_binary_constraints[reaction.id]["rf"])
     
     def set_objective_from_target_reaction(self,target_reaction,maximize = 1):
-        if target_reaction[0:3] == "bio":
-            target_reaction = self.cobramodel.reactions.get_by_id(target_reaction)
-        else:
-            target_reaction = self.cobramodel.reactions.get_by_id(target_reaction)
+        target_reaction = self.cobramodel.reactions.get_by_id(target_reaction)
         sense = "max"
         if maximize == 0:
             sense = "min"
@@ -267,7 +265,7 @@ class KBaseFBAUtilities():
         #Updating solver one final time
         self.cobramodel.solver.update()
         
-    def add_intracellular_metabolomics_constraints(self,peakstring,builder):
+    def add_intracellular_metabolomics_constraints(self,peakstring,builder,relevant_peaks = None):
         drain_fluxes = list()
         peak_array = peakstring.split(";")
         compound_reactions = dict()
@@ -282,50 +280,51 @@ class KBaseFBAUtilities():
             sub_array = peak.split(":")
             if len(sub_array) > 2:
                 peakid = sub_array[0]
-                coef = sub_array[1]
-                peak_coef = dict()
-                pfound = 0
-                for i in range(2,len(sub_array)):
-                    compound = sub_array[i]
-                    if compound[-3:] != "_c0":
-                        compound += "_c0"
-                    if compound in compound_reactions:
-                        cfound = 0
-                        compound_coef = dict()
-                        for reaction in compound_reactions[compound]:
-                            if reaction[0:3].lower() != "ex_" and reaction[0:3].lower() != "dm_":
-                                cfound = 1
-                                rxnobj = self.cobramodel.reactions.get_by_id(reaction)
-                                compound_coef[rxnobj.forward_variable] = 1000
-                                compound_coef[rxnobj.reverse_variable] = 1000
-                        if cfound == 1: 
-                            if compound not in self.compound_flux_variables:
-                                self.compound_flux_variables[compound] = self.cobramodel.problem.Variable(compound+"_f", lb=0,ub=1)
-                                self.cobramodel.add_cons_vars(self.compound_flux_variables[compound])
-                                self.compound_flux_constraints[compound] = self.cobramodel.problem.Constraint(
-                                    Zero,lb=0,ub=None,name=compound+"_flux"
-                                )
-                                self.cobramodel.add_cons_vars(self.compound_flux_constraints[compound])
-                            compound_coef[self.compound_flux_variables[compound]] = -1
-                            self.cobramodel.solver.update()
-                            self.compound_flux_constraints[compound].set_linear_coefficients(compound_coef)
-                            peak_coef[self.compound_flux_variables[compound]] = 1
-                            pfound = 1
-                            drain_reaction = self.add_drain_from_metabolite_id(compound)
-                            if drain_reaction.id not in self.cobramodel.reactions:
-                                self.cobramodel.add_reactions([drain_reaction])
-
-                if pfound == 1:
-                    if peakid not in self.metabolomics_peak_variables:
-                        self.metabolomics_peak_variables[peakid] = self.cobramodel.problem.Variable(peakid, lb=0,ub=1)
-                        self.cobramodel.add_cons_vars(self.metabolomics_peak_variables[peakid])
-                        self.metabolomics_peak_constraints[peakid] = self.cobramodel.problem.Constraint(
-                            Zero,lb=0,ub=None,name=peakid
-                        )
-                        self.cobramodel.add_cons_vars(self.metabolomics_peak_constraints[peakid])
-                    peak_coef[self.metabolomics_peak_variables[peakid]] = -1
-                    self.cobramodel.solver.update()
-                    self.metabolomics_peak_constraints[peakid].set_linear_coefficients(peak_coef)
+                if relevant_peaks == None or peakid in relevant_peaks:
+                    coef = sub_array[1]
+                    peak_coef = dict()
+                    pfound = 0
+                    for i in range(2,len(sub_array)):
+                        compound = sub_array[i]
+                        if compound[-3:] != "_c0":
+                            compound += "_c0"
+                        if compound in compound_reactions:
+                            cfound = 0
+                            compound_coef = dict()
+                            for reaction in compound_reactions[compound]:
+                                if reaction[0:3].lower() != "ex_" and reaction[0:3].lower() != "dm_":
+                                    cfound = 1
+                                    rxnobj = self.cobramodel.reactions.get_by_id(reaction)
+                                    compound_coef[rxnobj.forward_variable] = 1000
+                                    compound_coef[rxnobj.reverse_variable] = 1000
+                            if cfound == 1: 
+                                if compound not in self.compound_flux_variables:
+                                    self.compound_flux_variables[compound] = self.cobramodel.problem.Variable(compound+"_f", lb=0,ub=1)
+                                    self.cobramodel.add_cons_vars(self.compound_flux_variables[compound])
+                                    self.compound_flux_constraints[compound] = self.cobramodel.problem.Constraint(
+                                        Zero,lb=0,ub=None,name=compound+"_flux"
+                                    )
+                                    self.cobramodel.add_cons_vars(self.compound_flux_constraints[compound])
+                                compound_coef[self.compound_flux_variables[compound]] = -1
+                                self.cobramodel.solver.update()
+                                self.compound_flux_constraints[compound].set_linear_coefficients(compound_coef)
+                                peak_coef[self.compound_flux_variables[compound]] = 1
+                                pfound = 1
+                                drain_reaction = self.add_drain_from_metabolite_id(compound)
+                                if drain_reaction.id not in self.cobramodel.reactions:
+                                    self.cobramodel.add_reactions([drain_reaction])
+    
+                    if pfound == 1:
+                        if peakid not in self.metabolomics_peak_variables:
+                            self.metabolomics_peak_variables[peakid] = self.cobramodel.problem.Variable(peakid, lb=0,ub=1)
+                            self.cobramodel.add_cons_vars(self.metabolomics_peak_variables[peakid])
+                            self.metabolomics_peak_constraints[peakid] = self.cobramodel.problem.Constraint(
+                                Zero,lb=0,ub=None,name=peakid
+                            )
+                            self.cobramodel.add_cons_vars(self.metabolomics_peak_constraints[peakid])
+                        peak_coef[self.metabolomics_peak_variables[peakid]] = -1
+                        self.cobramodel.solver.update()
+                        self.metabolomics_peak_constraints[peakid].set_linear_coefficients(peak_coef)
         return drain_fluxes
     
     def convert_template_compound(self,template_compound,index,template):
@@ -889,4 +888,29 @@ class KBaseFBAUtilities():
                     gfrxn = newmodel.modelreactions.get_by_id(reaction.id)
                     gfrxn.gapfill_data[gfid] = dict()
                     gfrxn.gapfill_data[gfid]["0"] = ["<",1,[]]
-                
+    
+    def compute_reaction_scores(self,weigh_all_events_equally = 1,weights = None):
+        reaction_genes = {}
+        if "genome_ref" in self.fbamodel:
+            anno_api = annotation_ontology_api()
+            events = anno_api.get_annotation_ontology_events({
+                "input_ref" : self.fbamodel["genome_ref"],
+            })
+            for event in events:
+                for gene in event["ontology_terms"]:
+                    if "modelseed_ids" in event["ontology_terms"][gene]:
+                        for rxn in event["ontology_terms"][gene]["modelseed_ids"]:
+                            newrxn = re.sub("^MSRXN:","",rxn)
+                            if newrxn not in reaction_genes:
+                                reaction_genes[newrxn] = {}
+                            if gene not in reaction_genes[newrxn]:
+                                reaction_genes[newrxn][gene] = 0            
+                            if weigh_all_events_equally == 1 or weights == None:
+                                reaction_genes[newrxn][gene] += 1
+                            elif event["description"] in weights:
+                                reaction_genes[newrxn][gene] += weights[event["description"]]
+                            elif event["event_id"] in weights:
+                                reaction_genes[newrxn][gene] += weights[event["event_id"]]
+                            elif event["id"] in weights:
+                                reaction_genes[newrxn][gene] += weights[event["id"]]
+        return reaction_genes
