@@ -8,6 +8,7 @@ from cobrakbase.kbaseapi import KBaseAPI
 from cobrakbase.Workspace.WorkspaceClient import Workspace as WorkspaceClient
 from cobra.core import Gene, Metabolite, Model, Reaction
 from cobra.util.solver import linear_reaction_coefficients
+from annotation_ontology_api.annotation_ontology_apiServiceClient import annotation_ontology_api
 import cobrakbase.core.model
 import cobrakbase.core.converters
 import cobrakbase.core.kbasefba
