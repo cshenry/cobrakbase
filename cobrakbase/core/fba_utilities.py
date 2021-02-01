@@ -5,7 +5,7 @@ import copy
 from optlang.symbolics import Zero, add
 from cobra.core import Gene, Metabolite, Model, Reaction
 from cobrakbase.core.kbaseobject import AttrDict
-from annotation_ontology_api.annotation_ontology_apiServiceClient import annotation_ontology_api
+from cobrakbase.annotation_ontology_api.annotation_ontology_apiServiceClient import annotation_ontology_api
 
 logger = logging.getLogger(__name__)
 
