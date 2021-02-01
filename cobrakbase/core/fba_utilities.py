@@ -517,9 +517,9 @@ class KBaseFBAUtilities():
         new_exchange = []
         new_demand = []
         new_penalties = dict()
-        print("INDEX:"+str(index))
+        print("INDEX:"+str(index)+" LENGTH:"+len(input_templates))
         template = None
-        if index in input_templates:
+        if index < len(input_templates):
             template = input_templates[index]
         elif index in self.fbamodel['template_refs']:
             template = self.kbapi.get_from_ws(self.fbamodel['template_refs'][index])
