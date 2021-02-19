@@ -474,7 +474,7 @@ class KBaseFBAUtilities():
             if modelreaction.id.split("_")[0] in self.blacklist:
                 next
             #cobra_reaction = self.convert_modelreaction(modelreaction)
-            cobra_reaction = modelreaction.__deepcopy__()
+            cobra_reaction = modelreaction.deepcopy()
             groups = comp.match(cobra_reaction.id)
             cobra_reaction.id = groups[1]+groups[2]+str(index)
             new_penalties[cobra_reaction.id] = dict();
