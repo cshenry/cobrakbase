@@ -330,6 +330,8 @@ class KBaseFBAUtilities():
                         peak_coef[self.metabolomics_peak_variables[peakid]] = -1
                         self.cobramodel.solver.update()
                         self.metabolomics_peak_constraints[peakid].set_linear_coefficients(peak_coef)
+                    else:
+                        print(peakid+" not found!")
         return drain_fluxes
     
     def convert_template_compound(self,template_compound,index,template):
