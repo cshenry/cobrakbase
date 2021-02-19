@@ -496,8 +496,8 @@ class KBaseFBAUtilities():
                 self.cobramodel.reactions.get_by_id(cobra_reaction.id).update_variable_bounds()
 
         #Only run this on new exchanges so we don't readd for all exchanges
-        for cpd_id in new_exchange:
-            drain_reaction = self.add_drain_from_metabolite_id(cpd_id)
+        for cpd in new_exchange:
+            drain_reaction = self.add_drain_from_metabolite_id(cpd.id)
             if drain_reaction.id not in self.cobramodel.reactions and drain_reaction.id not in new_reactions:
                 new_reactions[drain_reaction.id] = drain_reaction
 
