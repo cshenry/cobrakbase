@@ -330,8 +330,7 @@ class KBaseFBAUtilities():
                         peak_coef[self.metabolomics_peak_variables[peakid]] = -1
                         self.cobramodel.solver.update()
                         self.metabolomics_peak_constraints[peakid].set_linear_coefficients(peak_coef)
-                    else:
-                        print(peakid+" not found!")
+
         return drain_fluxes
     
     def convert_template_compound(self,template_compound,index,template):
@@ -443,7 +442,7 @@ class KBaseFBAUtilities():
         new_exchange = []
         new_demand = []
         new_penalties = dict()
-        local_remap = dict()
+        local_remap = {}
 
         comp = re.compile('(.*_*)(.)\d+$')
         for modelcompound in source_model.metabolites:
@@ -466,7 +465,11 @@ class KBaseFBAUtilities():
                 if cobra_metabolite.compartment == self.auto_exchange:
                     self.exchange_compounds.add(cobra_metabolite.id)
                     new_exchange.append(cobra_metabolite)
-            self.metabolites_remap[modelcompound.id] = cobra_metabolite.id
+            if cobra_metabolite.id in self.cobramodel.metabolites:
+                cobra_metabolite = self.cobramodel.metabolites.get_by_id(cobra_metabolite.id)
+            else:#Just in case the same compound is added twice - we want to switch the metabolite to the first new version
+                cobra_metabolite = new_metabolites[cobra_metabolite.id]
+            local_remap[original_id] = cobra_metabolite
         #Adding all metabolites to model prior to adding reactions
         self.cobramodel.add_metabolites(new_metabolites.values())
         
@@ -478,6 +481,16 @@ class KBaseFBAUtilities():
             groups = comp.match(cobra_reaction.id)
             cobra_reaction.id = groups[1]+groups[2]+str(index)
             new_penalties[cobra_reaction.id] = dict();
+            #Updating metabolites in reaction to new model
+            metabolites = cobra_reaction.metabolites;
+            new_stoichiometry = {}
+            for metabolite in metabolites:
+                #Adding new coefficient:
+                new_stoichiometry[local_remap[metabolite.id]] = metabolites[metabolite]
+                #Zeroing out current coefficients
+                if local_remap[metabolite.id] != metabolite:
+                    new_stoichiometry[metabolite] = 0
+            cobra_reaction.add_metablites(new_stoichiometry,combine=False)
             if cobra_reaction.id not in self.cobramodel.reactions and cobra_reaction.id not in new_reactions:
                 new_reactions[cobra_reaction.id] = cobra_reaction
                 new_penalties[cobra_reaction.id]["added"] = 1
@@ -485,15 +498,16 @@ class KBaseFBAUtilities():
                     new_penalties[cobra_reaction.id]["reverse"] = model_penalty
                 if cobra_reaction.upper_bound > 0:
                     new_penalties[cobra_reaction.id]["forward"] = model_penalty
-            elif cobra_reaction.reversibility:
-                new_penalties[cobra_reaction.id]["reversed"] = 1
-                if self.cobramodel.reactions.get_by_id(cobra_reaction.id).lower_bound == 0:
-                    self.cobramodel.reactions.get_by_id(cobra_reaction.id).lower_bound = cobra_reaction.lower_bound
-                    new_penalties[cobra_reaction.id]["reverse"] = model_penalty
-                if self.cobramodel.reactions.get_by_id(cobra_reaction.id).upper_bound == 0:
-                    self.cobramodel.reactions.get_by_id(cobra_reaction.id).upper_bound = template_reaction.maxforflux
-                    new_penalties[cobra_reaction.id]["forward"] = model_penalty
+            elif cobra_reaction.lower_bound < 0 and self.cobramodel.reactions.get_by_id(cobra_reaction.id).lower_bound == 0:
+                self.cobramodel.reactions.get_by_id(cobra_reaction.id).lower_bound = cobra_reaction.lower_bound
                 self.cobramodel.reactions.get_by_id(cobra_reaction.id).update_variable_bounds()
+                new_penalties[cobra_reaction.id]["reverse"] = model_penalty
+                new_penalties[cobra_reaction.id]["reversed"] = 1
+            elif cobra_reaction.upper_bound > 0 and self.cobramodel.reactions.get_by_id(cobra_reaction.id).upper_bound == 0:
+                self.cobramodel.reactions.get_by_id(cobra_reaction.id).upper_bound = cobra_reaction.upper_bound
+                self.cobramodel.reactions.get_by_id(cobra_reaction.id).update_variable_bounds()
+                new_penalties[cobra_reaction.id]["forward"] = model_penalty
+                new_penalties[cobra_reaction.id]["reversed"] = 1
 
         #Only run this on new exchanges so we don't readd for all exchanges
         for cpd in new_exchange:
