@@ -490,7 +490,7 @@ class KBaseFBAUtilities():
                 #Zeroing out current coefficients
                 if local_remap[metabolite.id] != metabolite:
                     new_stoichiometry[metabolite] = 0
-            cobra_reaction.add_metablites(new_stoichiometry,combine=False)
+            cobra_reaction.add_metabolites(new_stoichiometry,combine=False)
             if cobra_reaction.id not in self.cobramodel.reactions and cobra_reaction.id not in new_reactions:
                 new_reactions[cobra_reaction.id] = cobra_reaction
                 new_penalties[cobra_reaction.id]["added"] = 1
