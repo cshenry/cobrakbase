@@ -416,6 +416,11 @@ class KBaseFBAUtilities():
                     new_penalties = self.mdl_extend_model_index_for_gapfilling(i,source_models[i],model_penalty)
                     gapfilling_penalties.update(new_penalties)
         #Rescaling penalties by reaction scores and saving genes
+        all_time_high_score = None
+        for rxnid in reaction_scores:
+            for gene in reaction_scores[rxnid]:
+                if all_time_high_score == None or reaction_scores[rxnid][gene] > all_time_high_score:
+                    all_time_high_score = reaction_scores[rxnid][gene]
         for reaction in gapfilling_penalties:
             array = reaction.split("_")
             rxnid = array[0]
@@ -424,11 +429,11 @@ class KBaseFBAUtilities():
                 for gene in reaction_scores[rxnid]:
                     if highest_score < reaction_scores[rxnid][gene]:
                         highest_score = reaction_scores[rxnid][gene]
-                factor = 1-0.9*highest_score
+                factor = 1-0.9*highest_score/all_time_high_score
                 if "reverse" in gapfilling_penalties[reaction]:
-                    gapfilling_penalties[reaction.id]["reverse"] = factor*gapfilling_penalties[reaction.id]["reverse"]
+                    gapfilling_penalties[reaction]["reverse"] = factor*gapfilling_penalties[reaction]["reverse"]
                 if "forward" in gapfilling_penalties[reaction]:
-                    gapfilling_penalties[reaction.id]["forward"] = factor*gapfilling_penalties[reaction.id]["forward"]
+                    gapfilling_penalties[reaction]["forward"] = factor*gapfilling_penalties[reaction]["forward"]
         self.cobramodel.solver.update()
         return gapfilling_penalties
 
