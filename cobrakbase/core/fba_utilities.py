@@ -429,7 +429,7 @@ class KBaseFBAUtilities():
                 for gene in reaction_scores[rxnid]:
                     if highest_score < reaction_scores[rxnid][gene]:
                         highest_score = reaction_scores[rxnid][gene]
-                factor = 1-0.9*highest_score/all_time_high_score
+                factor = 0.2 - 0.1*highest_score/all_time_high_score
                 if "reverse" in gapfilling_penalties[reaction]:
                     gapfilling_penalties[reaction]["reverse"] = factor*gapfilling_penalties[reaction]["reverse"]
                 if "forward" in gapfilling_penalties[reaction]:
