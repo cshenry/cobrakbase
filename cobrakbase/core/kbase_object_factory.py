@@ -49,10 +49,9 @@ class KBaseObjectFactory:
                 args[field] = ws_output["data"][0][field]
         data = ws_output["data"][0]["data"]
         info = KBaseObjectInfo(ws_output["data"][0]["info"])
-
+        
         if info and info.type and info.type in self.object_mapper:
             return self.object_mapper[info.type](data, info, args)
-
         return KBaseObject(data, info, args)
 
     def create(self, ws_output, object_type):

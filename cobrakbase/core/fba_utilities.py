@@ -395,13 +395,10 @@ class KBaseFBAUtilities():
         return cobra_reaction
 
     def build_model_extended_for_gapfilling(self,extend_with_template = 1,source_models = [], input_templates = [],model_penalty = 1,reaction_scores = {}):
-        model_id = self.fbamodel["id"]+".gf"
-        
         #Determine all indecies that should be gapfilled
         indexlist = [0]*1000
-        compounds = self.fbamodel["modelcompounds"]
-        for compound in compounds:
-            compartment = compound['modelcompartment_ref'].split("/").pop()
+        for compound in self.cobramodel.metabolites:
+            compartment = compound.id.split("_")[-1]
             basecomp = compartment[0:1]
             if not basecomp == "e":
                 index = compartment[1:]
@@ -429,9 +426,9 @@ class KBaseFBAUtilities():
                         highest_score = reaction_scores[rxnid][gene]
                 factor = 1-0.9*highest_score
                 if "reverse" in gapfilling_penalties[reaction]:
-                    penalties[reaction.id]["reverse"] = factor*penalties[reaction.id]["reverse"]
+                    gapfilling_penalties[reaction.id]["reverse"] = factor*gapfilling_penalties[reaction.id]["reverse"]
                 if "forward" in gapfilling_penalties[reaction]:
-                    penalties[reaction.id]["forward"] = factor*penalties[reaction.id]["forward"]
+                    gapfilling_penalties[reaction.id]["forward"] = factor*gapfilling_penalties[reaction.id]["forward"]
         self.cobramodel.solver.update()
         return gapfilling_penalties
 
@@ -935,3 +932,28 @@ class KBaseFBAUtilities():
                             elif event["id"] in weights:
                                 reaction_genes[newrxn][gene] += weights[event["id"]]
         return reaction_genes
+    
+    def replicate_model(self,count):
+        newmodel = Model(self.cobramodel.id+"_rep"+str(count))
+        utilities = KBaseFBAUtilities(newmodel,newmodel,self.kbapi,self.media,default_uptake = self.default_uptake,default_excretion = self.default_excretion,blacklist = self.blacklist)
+        metabolites = []
+        reactions = []
+        metabolite_hash = {}
+        for i in range(0,count):
+            for metabolite in self.cobramodel.metabolites:
+                metabolite = metabolite.copy()
+                metabolite.id = metabolite.id + "__" + str(i)
+                metabolite_hash[metabolite.id] = metabolite
+                metabolites.append(metabolite)
+            for reaction in self.cobramodel.reactions:
+                reaction = reaction.copy()
+                reaction.id = reaction.id + "__" + str(i)
+                input_metabolites = {}
+                for metabolite in reaction.metabolites:
+                    newid = metabolite.id + "__" + str(i)
+                    input_metabolites[metabolite_hash[newid]] = reaction.metabolites[metabolite]
+                reaction.add_metabolites(input_metabolites,combine=False)
+                reactions.append(reaction)
+        newmodel.add_metabolites(metabolites)
+        newmodel.add_reactions(reactions)
+        return utilities
