@@ -33,8 +33,8 @@ class KBaseAPI:
         if token is None and Path(str(Path.home()) + '/.kbase/token').exists():
             with open(str(Path.home()) + '/.kbase/token', 'r') as fh:
                 token = fh.read().strip()
-        if token is None:
-            raise Exception("missing token value or ~/.kbase/token file")
+        #if token is None:
+            #raise Exception("missing token value or ~/.kbase/token file")
 
         if config is None:
             self.ws_client = _get_ws_client(token, dev)
