@@ -13,6 +13,7 @@ from cobrakbase.core.kbase_object_factory import KBaseObjectFactory
 from cobrakbase.Workspace.baseclient import ServerError
 from cobrakbase.core.kbaseobject import KBaseObject
 from cobrakbase.exceptions import ShockException
+from pickle import NONE
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class KBaseAPI:
 
     def __init__(self, token=None, dev=False, config=None):
         self.max_retry = 3
+        self.cache = {}
         self.token = token
         if token is None and Path(str(Path.home()) + '/.kbase/token').exists():
             with open(str(Path.home()) + '/.kbase/token', 'r') as fh:
@@ -138,6 +140,42 @@ class KBaseAPI:
                     fh.write(chunk)
         return file_path
 
+    def check_cache(self,args):
+        if len(args["objects"]) > 1:
+            return None
+        ref = ""
+        if "ref" in args["objects"][0]:
+            ref = args["objects"][0]["ref"]
+        else:
+            ref = ""
+            if "wsid" in args["objects"][0]:
+                ref = str(args["objects"][0]["wsid"])+"/"
+            else:
+                ref = args["objects"][0]["workspace"]+"/"
+            if "objid" in args["objects"][0]:
+                ref += str(args["objects"][0]["objid"])
+            else:
+                ref += args["objects"][0]["name"]
+        if ref in self.cache:
+            return self.cache[ref]
+        return None
+    
+    def cache_output(self,output,args):
+        if len(args["objects"]) == 1:
+            if "ref" in args["objects"][0]:
+                self.cache[args["objects"][0]["ref"]] = output
+            else:
+                ref = ""
+                if "wsid" in args["objects"][0]:
+                    ref = str(args["objects"][0]["wsid"])+"/"
+                else:
+                    ref = args["objects"][0]["workspace"]+"/"
+                if "objid" in args["objects"][0]:
+                    ref += str(args["objects"][0]["objid"])
+                else:
+                    ref += args["objects"][0]["name"]  
+                self.cache[ref] = output 
+    
     def get_objects2(self, args):
         """
             All functions calling get_objects2 should call this function to ensure they get the retry
@@ -146,10 +184,15 @@ class KBaseAPI:
         :param args:
         :return:
         """
+        output = self.check_cache(args)
+        if output != None:
+            return output
         tries = 0
         while tries < self.max_retry:
             try:
-                return self.ws_client.get_objects2(args)
+                output = self.ws_client.get_objects2(args)
+                self.cache_output(output,args)
+                return output
             except ServerError as e:
                 if e.code == -32400:
                     logger.error(e.message)
@@ -160,7 +203,7 @@ class KBaseAPI:
                 logger.warning("Workspace get_objects2 call failed [%s:%s - %s]. Trying again!",
                                e.name, e.code, e.message)
                 tries += 1
-                time.sleep(500)  # Give half second
+                time.sleep(2000)  # Give half second
         logger.warning("get_objects2 failed after multiple tries: %s", sys.exc_info()[0])
         raise
 
