@@ -39,8 +39,9 @@ def _get_ws_client(token, dev=False):
 
 class KBaseAPI:
 
-    def __init__(self, token=None, dev=False, config=None):
+    def __init__(self, token=None, dev=False, config=None,use_cache=False):
         self.max_retry = 3
+        self.use_cache = use_cache
         self.cache = {}
         self.token = token
         if token is None and Path(str(Path.home()) + '/.kbase/token').exists():
@@ -161,6 +162,8 @@ class KBaseAPI:
         return None
     
     def cache_output(self,output,args):
+        if not self.use_cache:
+            return
         if len(args["objects"]) == 1:
             if "ref" in args["objects"][0]:
                 self.cache[args["objects"][0]["ref"]] = output
@@ -203,7 +206,7 @@ class KBaseAPI:
                 logger.warning("Workspace get_objects2 call failed [%s:%s - %s]. Trying again!",
                                e.name, e.code, e.message)
                 tries += 1
-                time.sleep(2000)  # Give half second
+                time.sleep(5000)  # Give half second
         logger.warning("get_objects2 failed after multiple tries: %s", sys.exc_info()[0])
         raise
 
@@ -275,7 +278,7 @@ class KBaseAPI:
     def save_model(self, object_id, ws, data):
         return self.save_object(object_id, ws, 'KBaseFBA.FBAModel', data)
 
-    def list_objects(self, ws, object_type=None, include_metadata=False):
+    def list_objects(self, ws, object_type=None, include_metadata=False, showHidden=1,showDeleted=1,before_epoch=None,after_epoch=None,savedby=None ):
         """
         List objects of a workspace (i.e., narrative) with either numerical id (e.g., 12345)
         or string id (e.g., user:narrative_1111111111111)
@@ -296,7 +299,22 @@ class KBaseAPI:
             params['type'] = object_type
         if include_metadata:
             params['includeMetadata'] = 1
-        return self.ws_client.list_objects(params)
+        params['showDeleted'] = showDeleted
+        params['showHidden'] = showHidden
+        if before_epoch != None:
+            params['before_epoch'] = before_epoch
+        if after_epoch != None:
+            params['after_epoch'] = after_epoch
+        if savedby != None:
+            params['savedby'] = savedby
+        total_output = []
+        while(True):
+            output = self.ws_client.list_objects(params)
+            if len(output) == 0:
+                break
+            total_output += (output)
+            params["minObjectID"] = output[-1][0]+1
+        return total_output
 
     def get_object_info(self, id_or_ref, workspace=None):
         ref_data = self.ws_client.get_object_info3(
